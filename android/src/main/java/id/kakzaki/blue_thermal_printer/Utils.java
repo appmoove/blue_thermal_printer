@@ -18,6 +18,17 @@ public class Utils {
             "0100", "0101", "0110", "0111", "1000", "1001", "1010", "1011",
             "1100", "1101", "1110", "1111" };
 
+    private static int[][] Floyd8x8 = new int[][]{{0, 32, 8, 40, 2, 34, 10, 42}, {48, 16, 56, 24, 50, 18, 58, 26}, {12, 44, 4, 36, 14, 46, 6, 38}, {60, 28, 52, 20, 62, 30, 54, 22}, {3, 35, 11, 43, 1, 33, 9, 41}, {51, 19, 59, 27, 49, 17, 57, 25}, {15, 47, 7, 39, 13, 45, 5, 37}, {63, 31, 55, 23, 61, 29, 53, 21}};
+
+    private static int[] p0 = new int[] { 0, 128 };
+    private static int[] p1 = new int[] { 0, 64 };
+    private static int[] p2 = new int[] { 0, 32 };
+    private static int[] p3 = new int[] { 0, 16 };
+    private static int[] p4 = new int[] { 0, 8 };
+    private static int[] p5 = new int[] { 0, 4 };
+    private static int[] p6 = new int[] { 0, 2 };
+    
+
     public static byte[] decodeBitmap(Bitmap bmp){
         int bmpWidth = bmp.getWidth();
         int bmpHeight = bmp.getHeight();
@@ -25,40 +36,9 @@ public class Utils {
         List<String> list = new ArrayList<String>(); //binaryString list
         StringBuffer sb;
 
+        byte[] src = bitmapToBWPix(bmp);
+        byte[] byteArray2 = pixToEscRastBitImageCmd(src);
 
-        int bitLen = bmpWidth / 8;
-        int zeroCount = bmpWidth % 8;
-
-        String zeroStr = "";
-        if (zeroCount > 0) {
-            bitLen = bmpWidth / 8 + 1;
-            for (int i = 0; i < (8 - zeroCount); i++) {
-                zeroStr = zeroStr + "0";
-            }
-        }
-
-        for (int i = 0; i < bmpHeight; i++) {
-            sb = new StringBuffer();
-            for (int j = 0; j < bmpWidth; j++) {
-                int color = bmp.getPixel(j, i);
-
-                int r = (color >> 16) & 0xff;
-                int g = (color >> 8) & 0xff;
-                int b = color & 0xff;
-
-                // if color close to white，bit='0', else bit='1'
-                if (r > 160 && g > 160 && b > 160)
-                    sb.append("0");
-                else
-                    sb.append("1");
-            }
-            if (zeroCount > 0) {
-                sb.append(zeroStr);
-            }
-            list.add(sb.toString());
-        }
-
-        List<String> bmpHexList = binaryListToHexStringList(list);
         String commandHexString = "1D763000";
         String widthHexString = Integer
                 .toHexString(bmpWidth % 8 == 0 ? bmpWidth / 8
@@ -82,41 +62,42 @@ public class Utils {
 
         List<String> commandList = new ArrayList<String>();
         commandList.add(commandHexString+widthHexString+heightHexString);
-        commandList.addAll(bmpHexList);
 
-        return hexList2Byte(commandList);
+        return hexList2Byte(commandList, byteArray2);
     }
 
-    public static List<String> binaryListToHexStringList(List<String> list) {
-        List<String> hexList = new ArrayList<String>();
-        for (String binaryStr : list) {
-            StringBuffer sb = new StringBuffer();
-            for (int i = 0; i < binaryStr.length(); i += 8) {
-                String str = binaryStr.substring(i, i + 8);
-
-                String hexString = myBinaryStrToHexString(str);
-                sb.append(hexString);
+    private static void format_K_dither8x8(int[] orgpixels, int xsize, int ysize, byte[] despixels) {
+        int k = 0;
+    
+        for(int y = 0; y < ysize; ++y) {
+            for(int x = 0; x < xsize; ++x) {
+                if ((orgpixels[k] & 255) >> 2 > Floyd8x8[x & 7][y & 7]) {
+                    despixels[k] = 0;
+                } else {
+                    despixels[k] = 1;
+                }
+    
+                ++k;
             }
-            hexList.add(sb.toString());
         }
-        return hexList;
-
+    
+    }
+    
+    public static byte[] bitmapToBWPix(Bitmap mBitmap) {
+        int[] pixels = new int[mBitmap.getWidth() * mBitmap.getHeight()];
+        byte[] data = new byte[mBitmap.getWidth() * mBitmap.getHeight()];
+        mBitmap.getPixels(pixels, 0, mBitmap.getWidth(), 0, 0, mBitmap.getWidth(), mBitmap.getHeight());
+        format_K_dither8x8(pixels, mBitmap.getWidth(), mBitmap.getHeight(), data);
+        return data;
     }
 
-    public static String myBinaryStrToHexString(String binaryStr) {
-        String hex = "";
-        String f4 = binaryStr.substring(0, 4);
-        String b4 = binaryStr.substring(4, 8);
-        for (int i = 0; i < binaryArray.length; i++) {
-            if (f4.equals(binaryArray[i]))
-                hex += hexStr.substring(i, i + 1);
-        }
-        for (int i = 0; i < binaryArray.length; i++) {
-            if (b4.equals(binaryArray[i]))
-                hex += hexStr.substring(i, i + 1);
-        }
-
-        return hex;
+    public static byte[] pixToEscRastBitImageCmd(byte[] src) {
+        byte[] data = new byte[src.length / 8];
+        for (int i = 0, k = 0; i < data.length; i++) {
+            data[i] = (byte)(p0[src[k]] + p1[src[k + 1]] + p2[src[k + 2]] + p3[src[k + 3]] + p4[src[k + 4]] + p5[src[k + 5]] + p6[src[k + 6]] + src[k + 7]);
+            k += 8;
+        } 
+        return data;
     }
 
     public static byte[] hexList2Byte(List<String> list) {
