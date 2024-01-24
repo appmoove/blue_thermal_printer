@@ -337,7 +337,8 @@ public class BlueThermalPrinterPlugin implements FlutterPlugin, ActivityAware,Me
         case "printImageBytes":
         if (arguments.containsKey("bytes")) {
           byte[] bytes = (byte[]) arguments.get("bytes");
-          printImageBytes(result, bytes);
+          boolean useGrayscale = (boolean) arguments.get("useGrayscale");
+          printImageBytes(result, bytes, useGrayscale);
         } else {
           result.error("invalid_argument", "argument 'bytes' not found", null);
         }
@@ -878,7 +879,7 @@ public class BlueThermalPrinterPlugin implements FlutterPlugin, ActivityAware,Me
     }
   }
 
-  private void printImageBytes(Result result, byte[] bytes) {
+  private void printImageBytes(Result result, byte[] bytes, boolean useGrayscale) {
     if (THREAD == null) {
       result.error("write_error", "not connected", null);
       return;
@@ -886,7 +887,7 @@ public class BlueThermalPrinterPlugin implements FlutterPlugin, ActivityAware,Me
     try {
       Bitmap bmp = BitmapFactory.decodeByteArray(bytes, 0, bytes.length);
       if (bmp != null) {
-        byte[] command = Utils.decodeBitmap(bmp);
+        byte[] command = Utils.decodeBitmap(bmp, useGrayscale);
         THREAD.write(PrinterCommands.ESC_ALIGN_CENTER);
         THREAD.write(command);
       } else {

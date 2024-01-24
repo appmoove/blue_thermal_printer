@@ -29,15 +29,49 @@ public class Utils {
     private static int[] p6 = new int[] { 0, 2 };
     
 
-    public static byte[] decodeBitmap(Bitmap bmp){
+    public static byte[] decodeBitmap(Bitmap bmp, boolean useGrayscale){
         int bmpWidth = bmp.getWidth();
         int bmpHeight = bmp.getHeight();
 
         List<String> list = new ArrayList<String>(); //binaryString list
+        List<String> bmpHexList = new ArrayList<String>();
         StringBuffer sb;
 
-        byte[] src = bitmapToBWPix(bmp);
-        byte[] byteArray2 = pixToEscRastBitImageCmd(src);
+        if (!useGrayscale) {
+            int bitLen = bmpWidth / 8;
+            int zeroCount = bmpWidth % 8;
+    
+            String zeroStr = "";
+            if (zeroCount > 0) {
+                bitLen = bmpWidth / 8 + 1;
+                for (int i = 0; i < (8 - zeroCount); i++) {
+                    zeroStr = zeroStr + "0";
+                }
+            }
+    
+            for (int i = 0; i < bmpHeight; i++) {
+                sb = new StringBuffer();
+                for (int j = 0; j < bmpWidth; j++) {
+                    int color = bmp.getPixel(j, i);
+    
+                    int r = (color >> 16) & 0xff;
+                    int g = (color >> 8) & 0xff;
+                    int b = color & 0xff;
+    
+                    // if color close to white，bit='0', else bit='1'
+                    if (r > 160 && g > 160 && b > 160)
+                        sb.append("0");
+                    else
+                        sb.append("1");
+                }
+                if (zeroCount > 0) {
+                    sb.append(zeroStr);
+                }
+                list.add(sb.toString());
+            }
+    
+           bmpHexList = binaryListToHexStringList(list);
+        }
 
         String commandHexString = "1D763000";
         String widthHexString = Integer
@@ -62,8 +96,23 @@ public class Utils {
 
         List<String> commandList = new ArrayList<String>();
         commandList.add(commandHexString+widthHexString+heightHexString);
+        
+        if (useGrayscale) {
+            byte[] src = bitmapToBWPix(bmp);
+            byte[] byteArray = pixToEscRastBitImageCmd(src);
+            return hexList2Byte(commandList, byteArray);
+        } else {
+            commandList.addAll(bmpHexList);
+            return hexList2Byte(commandList);
+        }
+    }
 
-        return hexList2Byte(commandList, byteArray2);
+    public static byte[] bitmapToBWPix(Bitmap mBitmap) {
+        int[] pixels = new int[mBitmap.getWidth() * mBitmap.getHeight()];
+        byte[] data = new byte[mBitmap.getWidth() * mBitmap.getHeight()];
+        mBitmap.getPixels(pixels, 0, mBitmap.getWidth(), 0, 0, mBitmap.getWidth(), mBitmap.getHeight());
+        format_K_dither8x8(pixels, mBitmap.getWidth(), mBitmap.getHeight(), data);
+        return data;
     }
 
     private static void format_K_dither8x8(int[] orgpixels, int xsize, int ysize, byte[] despixels) {
@@ -82,14 +131,6 @@ public class Utils {
         }
     
     }
-    
-    public static byte[] bitmapToBWPix(Bitmap mBitmap) {
-        int[] pixels = new int[mBitmap.getWidth() * mBitmap.getHeight()];
-        byte[] data = new byte[mBitmap.getWidth() * mBitmap.getHeight()];
-        mBitmap.getPixels(pixels, 0, mBitmap.getWidth(), 0, 0, mBitmap.getWidth(), mBitmap.getHeight());
-        format_K_dither8x8(pixels, mBitmap.getWidth(), mBitmap.getHeight(), data);
-        return data;
-    }
 
     public static byte[] pixToEscRastBitImageCmd(byte[] src) {
         byte[] data = new byte[src.length / 8];
@@ -100,12 +141,57 @@ public class Utils {
         return data;
     }
 
+    public static List<String> binaryListToHexStringList(List<String> list) {
+        List<String> hexList = new ArrayList<String>();
+        for (String binaryStr : list) {
+            StringBuffer sb = new StringBuffer();
+            for (int i = 0; i < binaryStr.length(); i += 8) {
+                String str = binaryStr.substring(i, i + 8);
+
+                String hexString = myBinaryStrToHexString(str);
+                sb.append(hexString);
+            }
+            hexList.add(sb.toString());
+        }
+        return hexList;
+
+    }
+
+    public static String myBinaryStrToHexString(String binaryStr) {
+        String hex = "";
+        String f4 = binaryStr.substring(0, 4);
+        String b4 = binaryStr.substring(4, 8);
+        for (int i = 0; i < binaryArray.length; i++) {
+            if (f4.equals(binaryArray[i]))
+                hex += hexStr.substring(i, i + 1);
+        }
+        for (int i = 0; i < binaryArray.length; i++) {
+            if (b4.equals(binaryArray[i]))
+                hex += hexStr.substring(i, i + 1);
+        }
+
+        return hex;
+    }
+
     public static byte[] hexList2Byte(List<String> list) {
         List<byte[]> commandList = new ArrayList<byte[]>();
 
         for (String hexStr : list) {
             commandList.add(hexStringToBytes(hexStr));
         }
+
+        byte[] bytes = sysCopy(commandList);
+        return bytes;
+    }
+
+    public static byte[] hexList2Byte(List<String> list, byte[] byteArray) {
+        List<byte[]> commandList = new ArrayList<byte[]>();
+
+        for (String hexStr : list) {
+            commandList.add(hexStringToBytes(hexStr));
+        }
+        commandList.add(byteArray);
+
         byte[] bytes = sysCopy(commandList);
         return bytes;
     }
