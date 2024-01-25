@@ -328,7 +328,9 @@ public class BlueThermalPrinterPlugin implements FlutterPlugin, ActivityAware,Me
       case "printImage":
         if (arguments.containsKey("pathImage")) {
           String pathImage = (String) arguments.get("pathImage");
-          printImage(result, pathImage);
+          boolean useGrayscale = (boolean) arguments.get("useGrayscale");
+          boolean moreContrast = (boolean) arguments.get("moreContrast");
+          printImage(result, pathImage, useGrayscale, moreContrast);
         } else {
           result.error("invalid_argument", "argument 'pathImage' not found", null);
         }
@@ -338,7 +340,8 @@ public class BlueThermalPrinterPlugin implements FlutterPlugin, ActivityAware,Me
         if (arguments.containsKey("bytes")) {
           byte[] bytes = (byte[]) arguments.get("bytes");
           boolean useGrayscale = (boolean) arguments.get("useGrayscale");
-          printImageBytes(result, bytes, useGrayscale);
+          boolean moreContrast = (boolean) arguments.get("moreContrast");
+          printImageBytes(result, bytes, useGrayscale, moreContrast);
         } else {
           result.error("invalid_argument", "argument 'bytes' not found", null);
         }
@@ -858,7 +861,7 @@ public class BlueThermalPrinterPlugin implements FlutterPlugin, ActivityAware,Me
     }
   }
 
-  private void printImage(Result result, String pathImage) {
+  private void printImage(Result result, String pathImage, boolean useGrayscale, boolean moreContrast) {
     if (THREAD == null) {
       result.error("write_error", "not connected", null);
       return;
@@ -866,7 +869,7 @@ public class BlueThermalPrinterPlugin implements FlutterPlugin, ActivityAware,Me
     try {
       Bitmap bmp = BitmapFactory.decodeFile(pathImage);
       if (bmp != null) {
-        byte[] command = Utils.decodeBitmap(bmp);
+        byte[] command = Utils.decodeBitmap(bmp, useGrayscale, moreContrast);
         THREAD.write(PrinterCommands.ESC_ALIGN_CENTER);
         THREAD.write(command);
       } else {
@@ -879,7 +882,7 @@ public class BlueThermalPrinterPlugin implements FlutterPlugin, ActivityAware,Me
     }
   }
 
-  private void printImageBytes(Result result, byte[] bytes, boolean useGrayscale) {
+  private void printImageBytes(Result result, byte[] bytes, boolean useGrayscale, boolean moreContrast) {
     if (THREAD == null) {
       result.error("write_error", "not connected", null);
       return;
@@ -887,7 +890,7 @@ public class BlueThermalPrinterPlugin implements FlutterPlugin, ActivityAware,Me
     try {
       Bitmap bmp = BitmapFactory.decodeByteArray(bytes, 0, bytes.length);
       if (bmp != null) {
-        byte[] command = Utils.decodeBitmap(bmp, useGrayscale);
+        byte[] command = Utils.decodeBitmap(bmp, useGrayscale, moreContrast);
         THREAD.write(PrinterCommands.ESC_ALIGN_CENTER);
         THREAD.write(command);
       } else {
@@ -925,7 +928,7 @@ public class BlueThermalPrinterPlugin implements FlutterPlugin, ActivityAware,Me
       BarcodeEncoder barcodeEncoder = new BarcodeEncoder();
       Bitmap bmp = barcodeEncoder.createBitmap(bitMatrix);
       if (bmp != null) {
-        byte[] command = Utils.decodeBitmap(bmp);
+        byte[] command = Utils.decodeBitmap(bmp, false, false);
         THREAD.write(command);
       } else {
         Log.e("Print Photo error", "the file isn't exists");

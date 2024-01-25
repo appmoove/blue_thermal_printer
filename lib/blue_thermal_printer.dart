@@ -111,15 +111,27 @@ class BlueThermalPrinter {
   ///drawerPin5()
   Future<dynamic> drawerPin5() => _channel.invokeMethod('drawerPin5');
 
-  ///printImage(String pathImage)
-  Future<dynamic> printImage(String pathImage) =>
-      _channel.invokeMethod('printImage', {'pathImage': pathImage});
+  ///printImage(String pathImage, {bool useGrayscale = false, bool moreContrast = true})
+  Future<dynamic> printImage(String pathImage, {bool useGrayscale = false, bool moreContrast = true}) =>
+      _channel.invokeMethod('printImage', {
+        'pathImage': pathImage, 
+        'useGrayscale': useGrayscale,
+        'moreContrast': moreContrast
+      });
 
-  ///printImageBytes(Uint8List bytes)
-  Future<dynamic> printImageBytes(Uint8List bytes, {bool useGrayscale = false}) =>
+  ///printImageBytes(Uint8List bytes, {bool useGrayscale = false, bool moreContrast = true})
+  ///    
+  /// The parameter `moreContrast` is used to decide which parameters will be 
+  /// used for the pre-configured brightness and contrast.
+  /// ```
+  /// double brightness = moreContrast ? 0.8 : 1.8;
+  /// double contrast = moreContrast ? 1.3 : 0.8;
+  /// ```
+  Future<dynamic> printImageBytes(Uint8List bytes, {bool useGrayscale = false, bool moreContrast = true}) =>
       _channel.invokeMethod('printImageBytes', {
         'bytes': bytes,
         'useGrayscale': useGrayscale,
+        'moreContrast': moreContrast
       });
 
   ///printQRcode(String textToQR, int width, int height, int align)

@@ -1,6 +1,10 @@
 package id.kakzaki.blue_thermal_printer;
 
 import android.graphics.Bitmap;
+import android.graphics.Canvas;
+import android.graphics.ColorMatrix;
+import android.graphics.ColorMatrixColorFilter;
+import android.graphics.Paint;
 import android.util.Log;
 
 import java.util.ArrayList;
@@ -29,7 +33,7 @@ public class Utils {
     private static int[] p6 = new int[] { 0, 2 };
     
 
-    public static byte[] decodeBitmap(Bitmap bmp, boolean useGrayscale){
+    public static byte[] decodeBitmap(Bitmap bmp, boolean useGrayscale, boolean moreContrast){
         int bmpWidth = bmp.getWidth();
         int bmpHeight = bmp.getHeight();
 
@@ -98,7 +102,7 @@ public class Utils {
         commandList.add(commandHexString+widthHexString+heightHexString);
         
         if (useGrayscale) {
-            byte[] src = bitmapToBWPix(bmp);
+            byte[] src = bitmapToBWPix(bmp, moreContrast);
             byte[] byteArray = pixToEscRastBitImageCmd(src);
             return hexList2Byte(commandList, byteArray);
         } else {
@@ -107,12 +111,57 @@ public class Utils {
         }
     }
 
-    public static byte[] bitmapToBWPix(Bitmap mBitmap) {
+    public static byte[] bitmapToBWPix(Bitmap mBitmap, boolean moreContrast) {
         int[] pixels = new int[mBitmap.getWidth() * mBitmap.getHeight()];
         byte[] data = new byte[mBitmap.getWidth() * mBitmap.getHeight()];
-        mBitmap.getPixels(pixels, 0, mBitmap.getWidth(), 0, 0, mBitmap.getWidth(), mBitmap.getHeight());
-        format_K_dither8x8(pixels, mBitmap.getWidth(), mBitmap.getHeight(), data);
+        Bitmap grayBitmap = toGrayscale(mBitmap, moreContrast);
+        grayBitmap.getPixels(pixels, 0, mBitmap.getWidth(), 0, 0, mBitmap.getWidth(), mBitmap.getHeight());
+        format_K_dither8x8(pixels, grayBitmap.getWidth(), grayBitmap.getHeight(), data);
         return data;
+    }
+
+    public static Bitmap toGrayscale(Bitmap bmpOriginal, boolean moreContrast) {
+        int width = bmpOriginal.getWidth();
+        int height = bmpOriginal.getHeight();
+    
+        Bitmap bmpGrayscale = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888);
+        Canvas c = new Canvas(bmpGrayscale);
+        Paint paint = new Paint();
+        ColorMatrix cm = new ColorMatrix();
+    
+        cm.setSaturation(0);
+    
+        float brightness = moreContrast ? 0.8f : 1.8f; // change this value to set the brightness
+        float contrast = moreContrast ? 1.3f : 0.8f; // change this value to set the contrast
+    
+        float[] brightnessMatrix = new float[]
+                {
+                        brightness, 0, 0, 0, 0,
+                        0, brightness, 0, 0, 0,
+                        0, 0, brightness, 0, 0,
+                        0, 0, 0, 1, 0,
+                };
+    
+        cm.postConcat(new ColorMatrix(brightnessMatrix));
+    
+        float scale = contrast + 1.f;
+        float translate = (-.5f * scale + .5f) * 255.f;
+    
+        float[] contrastMatrix = new float[]
+                {
+                        scale, 0, 0, 0, translate,
+                        0, scale, 0, 0, translate,
+                        0, 0, scale, 0, translate,
+                        0, 0, 0, 1, 0,
+                };
+    
+        cm.postConcat(new ColorMatrix(contrastMatrix));
+    
+        ColorMatrixColorFilter f = new ColorMatrixColorFilter(cm);
+        paint.setColorFilter(f);
+        c.drawBitmap(bmpOriginal, 0, 0, paint);
+    
+        return bmpGrayscale;
     }
 
     private static void format_K_dither8x8(int[] orgpixels, int xsize, int ysize, byte[] despixels) {
