@@ -3,7 +3,7 @@ description: Demonstrates how to use the blue_thermal_printer plugin.
 publish_to: https://pub.dev/packages/blue_thermal_printer
 
 environment:
-  sdk: ">=2.12.0 <3.0.0"
+  sdk: ^3.7.0
 
 dependencies:
   flutter:

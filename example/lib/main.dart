@@ -231,7 +231,7 @@ class _MyAppState extends State<MyApp> {
 
   Future show(
     String message, {
-    Duration duration: const Duration(seconds: 3),
+    Duration duration = const Duration(seconds: 3),
   }) async {
     await new Future.delayed(new Duration(milliseconds: 100));
     ScaffoldMessenger.of(context).showSnackBar(
